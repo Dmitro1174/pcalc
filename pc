@@ -1,0 +1,92 @@
+#! /bin/perl
+
+use strict;
+#use warnings;
+use 5.026;
+
+use File::Basename qw(dirname);
+use Cwd  qw(abs_path);
+use lib dirname(dirname abs_path $0) . '/pcalc';
+ 
+use TinyParser;
+use NameTable;
+use EvalEngine;
+use Utils;
+use Builtin;
+
+# globals
+my $verbose = 0;
+my @expressions = ();
+
+our $VERSION = '0.2.1';
+our $RELEASE = '21/6/2002';
+
+#
+#   Debug !!!
+#
+#@EvalEngine::dstack = (11, 9);
+#print "dstack before={@EvalEngine::dstack}\n";
+#print "res=", Builtin::call('factorial'), "\n";
+#print "dstack after={@EvalEngine::dstack}\n";
+#exit 0;
+#
+#   END Debug !!!
+#
+
+# command line interpretation
+if (scalar @ARGV == 0) {
+    print "expression or file to calculate must be specified.\n";
+    exit 1; 
+}
+
+# process command line
+for (@ARGV) {
+
+    if ($_ eq '-v') {   # verbose
+        $verbose = 1;
+        print "RPN calculator !\n";
+    } elsif ($_ eq '-h') {   # help
+        print "pcalc [-v | -V | -h] [quoted expression...] [file...]\n";
+    } elsif ($_ eq '-V')    {   # version
+        print "pcalc v$VERSION $RELEASE\n";
+    } else {
+        if (-e $_) {    # file: load and add contents to expressions
+        
+            print "processsing `$_`:\n" if ($verbose);
+            
+            if (open PROG, "<$_") {
+            
+                my $text = Utils::load_file $_;
+                if (not $text) {
+                    Error::display Error::CANNOT_READ, $_;
+                }
+                
+                push @expressions, $text;
+                
+            } else {
+                Error::display Error::CANNOT_OPEN, $_;
+            }
+        
+        } else {
+            push @expressions, $_;
+        }
+    }
+
+}
+
+# process expressions
+for (@expressions)  {
+   
+    @EvalEngine::istack = TinyParser::parse ($_); 
+    
+    print "istack=@EvalEngine::istack\n" if ($verbose);
+    
+    EvalEngine::main_loop ($verbose); 
+}
+
+# normal exit
+exit 0;
+
+
+
+
